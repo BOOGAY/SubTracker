@@ -11,11 +11,22 @@ export type NotificationEntryPayload = {
   tagNames: string[]
   websiteUrl: string
   notes: string
-  phase: 'upcoming' | 'due_today' | 'overdue' | 'summary'
+  phase: 'upcoming' | 'due_today' | 'overdue' | 'summary' | 'plan_due'
   daysUntilRenewal: number
   daysOverdue: number
   reminderRuleTime: string
   reminderRuleDays: number
+  plan?: {
+    id: string
+    name: string
+    amount: number
+    currency: string
+    intervalCount: number
+    intervalUnit: string
+    nextDate: string
+    notifyTime: string
+    notes: string
+  }
 }
 
 export type NotificationSummarySection = {
@@ -32,6 +43,7 @@ export type NotificationDedupEntry = {
   periodKey: string
   subscriptionId?: string
   payload: NotificationEntryPayload
+  customTemplate?: NotificationDispatchParams['customTemplate']
 }
 
 export type NotificationDispatchParams = {
@@ -41,6 +53,10 @@ export type NotificationDispatchParams = {
   subscriptionId?: string
   payload: Record<string, unknown>
   dedupEntries?: NotificationDedupEntry[]
+  customTemplate?: {
+    titleTemplate: string
+    bodyTemplate: string
+  }
 }
 
 type NotificationMergedPayload = {
@@ -156,7 +172,8 @@ export function buildDispatchParamsFromDedupEntries(
       periodKey: entry.periodKey,
       subscriptionId: entry.subscriptionId,
       payload: entry.payload,
-      dedupEntries: [entry]
+      dedupEntries: [entry],
+      customTemplate: entry.customTemplate
     }
   }
 

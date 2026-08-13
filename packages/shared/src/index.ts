@@ -238,6 +238,22 @@ export const SubscriptionLogoSchema = z.object({
   logoSource: z.string().max(100).nullable().optional()
 })
 
+export const NotificationPlanSchema = z.object({
+  id: z.string().cuid().optional(),
+  name: z.string().min(1).max(100),
+  amount: z.number().nonnegative().default(0),
+  currency: z.string().length(3).transform((value) => value.toUpperCase()),
+  intervalCount: z.number().int().positive().default(1),
+  intervalUnit: BillingIntervalUnitSchema,
+  nextDate: z.string().date(),
+  enabled: z.boolean().default(true),
+  autoAdvance: z.boolean().default(true),
+  notifyTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default('09:30'),
+  titleTemplate: z.string().max(500).default(''),
+  bodyTemplate: z.string().max(3000).default(''),
+  notes: z.string().max(1000).default('')
+})
+
 export const CreateSubscriptionSchema = z
   .object({
     name: z.string().min(1).max(150),
@@ -253,6 +269,7 @@ export const CreateSubscriptionSchema = z
     notifyDaysBefore: z.number().int().min(0).max(365).default(3),
     advanceReminderRules: z.string().max(500).optional(),
     overdueReminderRules: z.string().max(500).optional(),
+    notificationPlans: z.array(NotificationPlanSchema).max(20).default([]),
     webhookEnabled: z.boolean().default(true),
     notes: z.string().max(1000).default('')
   })
@@ -515,6 +532,7 @@ export const SubtrackerBackupCommitSchema = z.object({
 
 export type SubscriptionStatus = z.infer<typeof SubscriptionStatusSchema>
 export type BillingIntervalUnit = z.infer<typeof BillingIntervalUnitSchema>
+export type NotificationPlanInput = z.infer<typeof NotificationPlanSchema>
 export type WebhookRequestMethod = z.infer<typeof WebhookRequestMethodSchema>
 export type WebhookEventType = z.infer<typeof WebhookEventTypeSchema>
 export type CreateSubscriptionInput = z.infer<typeof CreateSubscriptionSchema>
@@ -834,6 +852,21 @@ export interface SubtrackerBackupSubscriptionDto {
   notifyDaysBefore: number
   advanceReminderRules: string | null
   overdueReminderRules: string | null
+  notificationPlans: Array<{
+    id: string
+    name: string
+    amount: number
+    currency: string
+    intervalCount: number
+    intervalUnit: BillingIntervalUnit
+    nextDate: string
+    enabled: boolean
+    autoAdvance: boolean
+    notifyTime: string
+    titleTemplate: string
+    bodyTemplate: string
+    notes: string
+  }>
   webhookEnabled: boolean
   notes: string
   tagIds: string[]

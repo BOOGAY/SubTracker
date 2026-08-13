@@ -74,6 +74,13 @@ function getPhaseLabelFromParams(params: NotificationDispatchParams, locale: App
     return getMessage(locale, 'notifications.phases.summary')
   }
 
+  if (phase === 'plan_due') {
+    const planName = typeof params.payload.plan === 'object' && params.payload.plan !== null
+      ? String((params.payload.plan as { name?: unknown }).name ?? '')
+      : ''
+    return planName || getMessage(locale, 'notifications.phases.dueToday')
+  }
+
   if (params.eventType === 'subscription.reminder_due') {
     if (mergedSubscriptions.length > 0) {
       return phase === 'due_today'
@@ -214,6 +221,7 @@ function buildSingleNotificationBody(presentation: NotificationSinglePresentatio
 type NotificationTemplateRenderOptions = {
   group?: NotificationTemplateGroup
   templateConfig?: NotificationTemplateConfigInput | null
+  customTemplate?: NotificationDispatchParams['customTemplate']
 }
 
 type ForgotPasswordTemplatePayload = {
@@ -609,6 +617,20 @@ function createSingleTemplateValues(
   group: NotificationTemplateGroup
 ) {
   const subscription = presentation.subscription
+  const plan = subscription.plan
+  const planValues = {
+    'plan.name': String(plan?.name ?? ''),
+    'plan.amount': String(plan?.amount ?? ''),
+    'plan.currency': String(plan?.currency ?? ''),
+    'plan.amountWithCurrency': `${plan?.amount ?? ''} ${plan?.currency ?? ''}`.trim(),
+    'plan.nextDate': formatNotificationDate(String(plan?.nextDate ?? '')),
+    'plan.intervalCount': String(plan?.intervalCount ?? ''),
+    'plan.intervalUnit': String(plan?.intervalUnit ?? ''),
+    'plan.notifyTime': String(plan?.notifyTime ?? ''),
+    'plan.notes': String(plan?.notes ?? '')
+  }
+  const escapeValue = group === 'html' ? escapeHtml : group === 'markdown' ? escapeMarkdownValue : (value: string) => value
+  const escapedPlanValues = Object.fromEntries(Object.entries(planValues).map(([key, value]) => [key, escapeValue(value)]))
   const values =
     group === 'html'
       ? {
@@ -629,7 +651,8 @@ function createSingleTemplateValues(
           summaryBlock: '',
           sectionsBlock: '',
           forgotPasswordBlock: '',
-          testIntroBlock: buildTestIntroBlock(group, locale)
+          testIntroBlock: buildTestIntroBlock(group, locale),
+          ...escapedPlanValues
         }
       : group === 'markdown'
         ? {
@@ -650,7 +673,8 @@ function createSingleTemplateValues(
             summaryBlock: '',
             sectionsBlock: '',
             forgotPasswordBlock: '',
-            testIntroBlock: buildTestIntroBlock(group, locale)
+            testIntroBlock: buildTestIntroBlock(group, locale),
+            ...escapedPlanValues
           }
         : {
             appName: 'SubTracker',
@@ -670,7 +694,8 @@ function createSingleTemplateValues(
             summaryBlock: '',
             sectionsBlock: '',
             forgotPasswordBlock: '',
-            testIntroBlock: buildTestIntroBlock(group, locale)
+            testIntroBlock: buildTestIntroBlock(group, locale),
+            ...planValues
           }
 
   return values
@@ -729,7 +754,7 @@ export function renderNotificationMessage(
     presentation.mode === 'merged'
       ? 'mergedReminder'
       : 'singleReminder'
-  const template = getEffectiveTemplate(group, scene, locale, options.templateConfig)
+  const template = options.customTemplate ?? getEffectiveTemplate(group, scene, locale, options.templateConfig)
   const title =
     presentation.mode === 'merged'
       ? buildMergedNotificationTitle(presentation, locale)
@@ -765,7 +790,10 @@ export function buildNotificationMessage(
   locale: AppLocale = 'zh-CN',
   options: NotificationTemplateRenderOptions = {}
 ): DirectNotificationMessage {
-  return renderNotificationMessage(resolveNotificationPresentation(params, locale), locale, options)
+  return renderNotificationMessage(resolveNotificationPresentation(params, locale), locale, {
+    ...options,
+    customTemplate: options.customTemplate ?? params.customTemplate
+  })
 }
 
 export function buildForgotPasswordNotificationMessage(

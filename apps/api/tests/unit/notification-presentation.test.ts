@@ -46,6 +46,38 @@ const spotifyPayload = {
 }
 
 describe('notification presentation', () => {
+  it('renders independent notification plan templates with plan variables', () => {
+    const params: NotificationDispatchParams = {
+      eventType: 'subscription.reminder_due',
+      resourceKey: 'notification-plan:plan-1',
+      periodKey: '2026-05-01:09:30',
+      subscriptionId: 'sub-1',
+      payload: {
+        ...netflixPayload,
+        phase: 'plan_due',
+        plan: {
+          id: 'plan-1',
+          name: '合租收款',
+          amount: 30,
+          currency: 'CNY',
+          amountWithCurrency: '30 CNY',
+          intervalCount: 3,
+          intervalUnit: 'month',
+          nextDate: '2026-05-01',
+          notifyTime: '09:30',
+          notes: '三个月收一次'
+        }
+      },
+      customTemplate: {
+        titleTemplate: '{{plan.name}}提醒：{{subscription.name}}',
+        bodyTemplate: '请收取 {{plan.amountWithCurrency}}，下次日期 {{plan.nextDate}}。'
+      }
+    }
+
+    expect(buildNotificationMessage(params).title).toBe('合租收款提醒：Netflix')
+    expect(buildNotificationMessage(params).text).toContain('请收取 30 CNY，下次日期 2026-05-01。')
+  })
+
   it('keeps single reminder title and body stable', () => {
     const params: NotificationDispatchParams = {
       eventType: 'subscription.reminder_due',

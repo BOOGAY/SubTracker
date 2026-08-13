@@ -59,6 +59,7 @@ model Subscription {
   webhookEnabled       Boolean            @default(true)
   notes                String             @default("")
   tags                 SubscriptionTag[]
+  notificationPlans    NotificationPlan[]
   paymentRecords       PaymentRecord[]
   deliveries           WebhookDelivery[]
   createdAt            DateTime           @default(now())
@@ -66,6 +67,29 @@ model Subscription {
 
   @@index([status, nextRenewalDate])
   @@index([autoRenew, nextRenewalDate])
+}
+
+model NotificationPlan {
+  id             String               @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription         @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  name           String
+  amount         Float                @default(0)
+  currency       String
+  intervalCount  Int                  @default(1)
+  intervalUnit   BillingIntervalUnit
+  nextDate       DateTime
+  enabled        Boolean              @default(true)
+  autoAdvance    Boolean              @default(true)
+  notifyTime     String               @default("09:30")
+  titleTemplate  String               @default("")
+  bodyTemplate   String               @default("")
+  notes          String               @default("")
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([subscriptionId])
+  @@index([enabled, nextDate])
 }
 
 model SubscriptionTag {

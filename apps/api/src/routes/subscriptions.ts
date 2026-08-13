@@ -40,7 +40,8 @@ import { parseDateInTimezone, startOfDayDateInTimezone } from '../utils/timezone
 import { normalizeWebsiteUrlInput } from '../utils/website-url'
 
 const subscriptionInclude = {
-  tags: { include: { tag: true } }
+  tags: { include: { tag: true } },
+  notificationPlans: true
 } as const
 
 type SubscriptionDetailPayload = Prisma.SubscriptionGetPayload<{ include: typeof subscriptionInclude }>
@@ -124,6 +125,48 @@ function normalizeSubscriptionPayloadWebsiteUrl<T extends Record<string, unknown
     },
     websiteUrlError: null
   }
+}
+
+async function replaceNotificationPlans(
+  db: Prisma.TransactionClient,
+  subscriptionId: string,
+  plans: Array<{
+    name: string
+    amount: number
+    currency: string
+    intervalCount: number
+    intervalUnit: 'day' | 'week' | 'month' | 'quarter' | 'year'
+    nextDate: string
+    enabled: boolean
+    autoAdvance: boolean
+    notifyTime: string
+    titleTemplate: string
+    bodyTemplate: string
+    notes: string
+  }>,
+  timezone: string
+) {
+  await db.notificationPlan.deleteMany({ where: { subscriptionId } })
+
+  if (plans.length === 0) return
+
+  await db.notificationPlan.createMany({
+    data: plans.map((plan) => ({
+      subscriptionId,
+      name: plan.name,
+      amount: plan.amount,
+      currency: plan.currency,
+      intervalCount: plan.intervalCount,
+      intervalUnit: plan.intervalUnit,
+      nextDate: parseDateInTimezone(plan.nextDate, timezone),
+      enabled: plan.enabled,
+      autoAdvance: plan.autoAdvance,
+      notifyTime: plan.notifyTime,
+      titleTemplate: plan.titleTemplate,
+      bodyTemplate: plan.bodyTemplate,
+      notes: plan.notes
+    }))
+  })
 }
 
 async function runBatchAction(
@@ -614,6 +657,9 @@ export async function subscriptionRoutes(app: FastifyInstance) {
       })
 
       await replaceSubscriptionTags(tx, subscription.id, tagIds)
+      if (parsed.data.notificationPlans.length > 0) {
+        await replaceNotificationPlans(tx, subscription.id, parsed.data.notificationPlans, timezone)
+      }
       return tx.subscription.findUniqueOrThrow({
         where: { id: subscription.id },
         include: subscriptionInclude
@@ -716,6 +762,10 @@ export async function subscriptionRoutes(app: FastifyInstance) {
 
         if (tagIds) {
           await replaceSubscriptionTags(tx, subscription.id, tagIds)
+        }
+
+        if (payload.notificationPlans !== undefined) {
+          await replaceNotificationPlans(tx, subscription.id, payload.notificationPlans, timezone)
         }
 
         return tx.subscription.findUniqueOrThrow({

@@ -53,6 +53,22 @@ export interface Tag {
   sortOrder: number
 }
 
+export interface NotificationPlan {
+  id?: string
+  name: string
+  amount: number
+  currency: string
+  intervalCount: number
+  intervalUnit: 'day' | 'week' | 'month' | 'quarter' | 'year'
+  nextDate: string
+  enabled: boolean
+  autoAdvance: boolean
+  notifyTime: string
+  titleTemplate: string
+  bodyTemplate: string
+  notes: string
+}
+
 export interface Subscription {
   id: string
   name: string
@@ -73,6 +89,7 @@ export interface Subscription {
   notifyDaysBefore: number
   advanceReminderRules?: string | null
   overdueReminderRules?: string | null
+  notificationPlans?: NotificationPlan[]
   webhookEnabled: boolean
   notes: string
   createdAt: string

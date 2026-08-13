@@ -3,6 +3,7 @@ import { DEFAULT_APP_LOCALE, getMessage } from '@subtracker/shared'
 import { config } from '../config'
 import { refreshExchangeRates } from './exchange-rate.service'
 import { scanRenewalNotifications } from './notification.service'
+import { formatNotificationPlanScan, scanNotificationPlans } from './notification-plan.service'
 import { parseDailyCronForTimezoneGate, runDailyTaskAtLocalHour } from './cron-gate.service'
 import { getAppTimezone } from './settings.service'
 import { autoRenewDueSubscriptions, reconcileExpiredSubscriptions } from './subscription.service'
@@ -98,6 +99,8 @@ export function startSchedulers() {
       await cleanupNotificationDedupSettingsOncePerDay()
       const result = await scanRenewalNotifications()
       logReminderScan(result)
+      const planResult = await scanNotificationPlans()
+      console.log(formatNotificationPlanScan(planResult))
     } catch (e) {
       console.error(getMessage(DEFAULT_APP_LOCALE, 'scheduler.logs.reminderScanFailed'), e)
     }

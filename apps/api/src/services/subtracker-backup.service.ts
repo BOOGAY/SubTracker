@@ -88,6 +88,21 @@ type BackupSubscriptionRow = {
   createdAt: Date
   updatedAt: Date
   tags: BackupSubscriptionTagRow[]
+  notificationPlans: Array<{
+    id: string
+    name: string
+    amount: number
+    currency: string
+    intervalCount: number
+    intervalUnit: SubtrackerBackupSubscriptionDto['billingIntervalUnit']
+    nextDate: Date
+    enabled: boolean
+    autoAdvance: boolean
+    notifyTime: string
+    titleTemplate: string
+    bodyTemplate: string
+    notes: string
+  }>
 }
 type BackupPaymentRecordRow = {
   id: string
@@ -185,7 +200,8 @@ async function buildBackupManifest(): Promise<{ manifest: BackupManifest; logoBu
     }),
     prisma.subscription.findMany({
       include: {
-        tags: true
+        tags: true,
+        notificationPlans: true
       },
       orderBy: [{ createdAt: 'asc' }]
     }),
@@ -214,6 +230,21 @@ async function buildBackupManifest(): Promise<{ manifest: BackupManifest; logoBu
     notifyDaysBefore: subscription.notifyDaysBefore,
     advanceReminderRules: subscription.advanceReminderRules ?? null,
     overdueReminderRules: subscription.overdueReminderRules ?? null,
+    notificationPlans: (subscription.notificationPlans ?? []).map((plan) => ({
+      id: plan.id,
+      name: plan.name,
+      amount: plan.amount,
+      currency: plan.currency,
+      intervalCount: plan.intervalCount,
+      intervalUnit: plan.intervalUnit,
+      nextDate: formatDateInTimezone(plan.nextDate, settings.timezone),
+      enabled: plan.enabled,
+      autoAdvance: plan.autoAdvance,
+      notifyTime: plan.notifyTime,
+      titleTemplate: plan.titleTemplate,
+      bodyTemplate: plan.bodyTemplate,
+      notes: plan.notes
+    })),
     webhookEnabled: subscription.webhookEnabled,
     notes: subscription.notes,
     tagIds: subscription.tags.map((item: BackupSubscriptionTagRow) => item.tagId),
@@ -647,7 +678,24 @@ export async function commitSubtrackerBackup(
         webhookEnabled: subscription.webhookEnabled,
         notes: subscription.notes,
         createdAt: new Date(subscription.createdAt),
-        updatedAt: new Date(subscription.updatedAt)
+        updatedAt: new Date(subscription.updatedAt),
+        notificationPlans: {
+          create: (subscription.notificationPlans ?? []).map((plan) => ({
+            id: plan.id,
+            name: plan.name,
+            amount: plan.amount,
+            currency: plan.currency,
+            intervalCount: plan.intervalCount,
+            intervalUnit: plan.intervalUnit,
+            nextDate: parseDateInTimezone(plan.nextDate, appTimezone),
+            enabled: plan.enabled,
+            autoAdvance: plan.autoAdvance,
+            notifyTime: plan.notifyTime,
+            titleTemplate: plan.titleTemplate,
+            bodyTemplate: plan.bodyTemplate,
+            notes: plan.notes
+          }))
+        }
       }
     })
 

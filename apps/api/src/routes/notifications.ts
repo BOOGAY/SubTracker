@@ -34,6 +34,7 @@ import {
   sendTestTelegramNotificationWithConfig
 } from '../services/channel-notification.service'
 import { scanRenewalNotifications } from '../services/notification.service'
+import { scanNotificationPlans } from '../services/notification-plan.service'
 import {
   getPrimaryWebhookEndpoint,
   sendTestWebhookNotification,
@@ -94,7 +95,11 @@ export async function notificationRoutes(app: FastifyInstance) {
       includeDebugCandidates: true,
       locale
     })
-    return sendOk(reply, result)
+    const plans = await scanNotificationPlans(parsed.data.now ? new Date(parsed.data.now) : new Date(), {
+      dryRun: parsed.data.dryRun,
+      locale
+    })
+    return sendOk(reply, { ...result, notificationPlans: plans })
   })
 
   app.post('/notifications/test/email', async (request, reply) => {

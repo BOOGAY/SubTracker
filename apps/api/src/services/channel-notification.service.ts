@@ -353,7 +353,8 @@ async function dispatchDirectChannelNotification(
   await options.send(
     buildNotificationMessage(dispatchParams, locale, {
       group: options.templateGroup,
-      templateConfig: options.templateConfig
+      templateConfig: options.templateConfig,
+      customTemplate: dispatchParams.customTemplate
     })
   )
   await markNotificationEntriesSent(options.channel, dispatchParams)

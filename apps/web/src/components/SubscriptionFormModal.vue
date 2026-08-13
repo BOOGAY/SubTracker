@@ -266,6 +266,96 @@
         @visibility-change="subscriptionReminderPreviewVisible = $event"
       />
 
+      <section class="notification-plans">
+        <div class="notification-plans__header">
+          <div>
+            <div class="notification-plans__title">{{ t('subscriptions.form.notificationPlansTitle') }}</div>
+            <div class="notification-plans__hint">{{ t('subscriptions.form.notificationPlansHint') }}</div>
+          </div>
+          <n-button size="small" type="primary" secondary @click="addNotificationPlan">
+            {{ t('subscriptions.form.addNotificationPlan') }}
+          </n-button>
+        </div>
+
+        <div v-if="form.notificationPlans.length" class="notification-plans__list">
+          <div v-for="(plan, index) in form.notificationPlans" :key="plan.localId" class="notification-plan-card">
+            <div class="notification-plan-card__header">
+              <span>{{ t('subscriptions.form.notificationPlanNumber', { number: index + 1 }) }}</span>
+              <n-button text type="error" size="small" @click="removeNotificationPlan(index)">
+                {{ t('common.actions.delete') }}
+              </n-button>
+            </div>
+
+            <n-grid :cols="layoutCols" :x-gap="16" :y-gap="8">
+              <n-grid-item>
+                <n-form-item :label="t('subscriptions.form.notificationPlanName')">
+                  <n-input v-model:value="plan.name" :placeholder="t('subscriptions.form.notificationPlanNamePlaceholder')" />
+                </n-form-item>
+              </n-grid-item>
+              <n-grid-item>
+                <n-form-item :label="t('subscriptions.form.notificationPlanNextDate')">
+                  <n-date-picker v-model:value="plan.nextDateTs" type="date" style="width: 100%" />
+                </n-form-item>
+              </n-grid-item>
+            </n-grid>
+
+            <n-grid :cols="moneyCols" :x-gap="16" :y-gap="8">
+              <n-grid-item>
+                <n-form-item :label="t('common.labels.amount')">
+                  <n-input-number v-model:value="plan.amount" :min="0" :precision="2" style="width: 100%" />
+                </n-form-item>
+              </n-grid-item>
+              <n-grid-item>
+                <n-form-item :label="t('common.labels.currency')">
+                  <n-select v-model:value="plan.currency" :options="currencyOptions" filterable />
+                </n-form-item>
+              </n-grid-item>
+              <n-grid-item>
+                <n-form-item :label="t('subscriptions.form.notificationPlanInterval')">
+                  <n-input-number v-model:value="plan.intervalCount" :min="1" :precision="0" style="width: 100%" />
+                </n-form-item>
+              </n-grid-item>
+              <n-grid-item>
+                <n-form-item :label="t('common.labels.unit')">
+                  <n-select v-model:value="plan.intervalUnit" :options="intervalOptions" />
+                </n-form-item>
+              </n-grid-item>
+            </n-grid>
+
+            <n-grid :cols="layoutCols" :x-gap="16" :y-gap="8">
+              <n-grid-item>
+                <n-form-item :label="t('subscriptions.form.notificationPlanTime')">
+                  <n-input v-model:value="plan.notifyTime" placeholder="09:30" />
+                </n-form-item>
+              </n-grid-item>
+              <n-grid-item>
+                <n-space class="notification-plan-card__switches" align="center">
+                  <n-switch v-model:value="plan.enabled" />
+                  <span>{{ t('subscriptions.form.notificationPlanEnabled') }}</span>
+                  <n-switch v-model:value="plan.autoAdvance" />
+                  <span>{{ t('subscriptions.form.notificationPlanAutoAdvance') }}</span>
+                </n-space>
+              </n-grid-item>
+            </n-grid>
+
+            <n-form-item :label="t('subscriptions.form.notificationPlanTitleTemplate')">
+              <n-input v-model:value="plan.titleTemplate" :placeholder="t('subscriptions.form.notificationPlanTitlePlaceholder')" />
+            </n-form-item>
+            <n-form-item :label="t('subscriptions.form.notificationPlanBodyTemplate')">
+              <n-input
+                v-model:value="plan.bodyTemplate"
+                type="textarea"
+                :autosize="{ minRows: 3, maxRows: 8 }"
+                :placeholder="t('subscriptions.form.notificationPlanBodyPlaceholder')"
+              />
+            </n-form-item>
+            <n-input v-model:value="plan.notes" :placeholder="t('subscriptions.form.notificationPlanNotesPlaceholder')" />
+            <div class="notification-plan-card__variables">{{ t('subscriptions.form.notificationPlanVariables') }}</div>
+          </div>
+        </div>
+        <div v-else class="notification-plans__empty">{{ t('subscriptions.form.notificationPlansEmpty') }}</div>
+      </section>
+
       <n-form-item :label="t('common.labels.notes')" :validation-status="validationStatusOf('notes')" :feedback="formErrors.notes">
         <n-input
           v-model:value="form.notes"
@@ -347,7 +437,7 @@ import {
 } from '@/utils/subscription-form'
 import { useLocalizedMessage } from '@/utils/localized-message'
 import { filterLocalLogoLibrary } from '@/utils/logo-library'
-import type { AiRecognitionResult, LogoSearchResult, Subscription, Tag } from '@/types/api'
+import type { AiRecognitionResult, LogoSearchResult, NotificationPlan, Subscription, Tag } from '@/types/api'
 
 const LOGO_TAB_WEB = 'web'
 const LOGO_TAB_LIBRARY = 'library'
@@ -384,6 +474,11 @@ const localLogoSearchQuery = ref('')
 const logoFileInputRef = ref<HTMLInputElement | null>(null)
 const formErrors = reactive<SubscriptionFormErrors>({})
 const dateFieldMode = ref<'default' | 'model' | 'manual'>('default')
+
+type NotificationPlanForm = Omit<NotificationPlan, 'id' | 'nextDate'> & {
+  localId: string
+  nextDateTs: number | null
+}
 
 const layoutCols = computed(() => (width.value < 700 ? 1 : 2))
 const moneyCols = computed(() => (width.value < 900 ? 2 : 4))
@@ -431,7 +526,8 @@ const form = reactive({
   notes: '',
   websiteUrl: '',
   logoUrl: '',
-  logoSource: ''
+  logoSource: '',
+  notificationPlans: [] as NotificationPlanForm[]
 })
 
 const canCalculateNextRenewal = computed(() =>
@@ -531,6 +627,7 @@ function resetForm() {
   form.websiteUrl = ''
   form.logoUrl = ''
   form.logoSource = ''
+  form.notificationPlans = []
   logoCandidates.value = []
   localLogoSearchQuery.value = ''
   showLogoPanel.value = false
@@ -555,10 +652,47 @@ function hydrateFromModel(model: Subscription) {
   form.websiteUrl = model.websiteUrl ?? ''
   form.logoUrl = model.logoUrl ?? ''
   form.logoSource = model.logoSource ?? ''
+  form.notificationPlans = (model.notificationPlans ?? []).map((plan, index) => ({
+    localId: plan.id ?? `plan-${index}-${Date.now()}`,
+    name: plan.name,
+    amount: plan.amount,
+    currency: plan.currency,
+    intervalCount: plan.intervalCount,
+    intervalUnit: plan.intervalUnit,
+    nextDateTs: businessDateToPickerTs(plan.nextDate, settings.value?.timezone),
+    enabled: plan.enabled,
+    autoAdvance: plan.autoAdvance,
+    notifyTime: plan.notifyTime,
+    titleTemplate: plan.titleTemplate,
+    bodyTemplate: plan.bodyTemplate,
+    notes: plan.notes
+  }))
   logoCandidates.value = []
   localLogoSearchQuery.value = ''
   showLogoPanel.value = false
   clearFormErrors()
+}
+
+function addNotificationPlan() {
+  form.notificationPlans.push({
+    localId: `plan-${Date.now()}-${form.notificationPlans.length}`,
+    name: '',
+    amount: Number(form.amount ?? 0),
+    currency: form.currency,
+    intervalCount: 1,
+    intervalUnit: 'month',
+    nextDateTs: form.nextRenewalDateTs ?? currentBusinessDatePickerTs(settings.value?.timezone),
+    enabled: true,
+    autoAdvance: true,
+    notifyTime: '09:30',
+    titleTemplate: '',
+    bodyTemplate: '',
+    notes: ''
+  })
+}
+
+function removeNotificationPlan(index: number) {
+  form.notificationPlans.splice(index, 1)
 }
 
 function handleReset() {
@@ -829,6 +963,16 @@ function submit() {
     return
   }
 
+  const invalidPlan = form.notificationPlans.find((plan) =>
+    !plan.name.trim() ||
+    plan.nextDateTs === null ||
+    !/^([01]\d|2[0-3]):[0-5]\d$/.test(plan.notifyTime)
+  )
+  if (invalidPlan) {
+    message.warning(t('subscriptions.form.notificationPlanInvalid'))
+    return
+  }
+
   emit(
     'submit',
     {
@@ -848,7 +992,21 @@ function submit() {
       notes: form.notes,
       websiteUrl: validation.normalizedWebsiteUrl,
       logoUrl: form.logoUrl || null,
-      logoSource: form.logoSource || null
+      logoSource: form.logoSource || null,
+      notificationPlans: form.notificationPlans.map((plan) => ({
+        name: plan.name.trim(),
+        amount: Number(plan.amount ?? 0),
+        currency: plan.currency,
+        intervalCount: Number(plan.intervalCount || 1),
+        intervalUnit: plan.intervalUnit,
+        nextDate: pickerTsToDateString(plan.nextDateTs!),
+        enabled: plan.enabled,
+        autoAdvance: plan.autoAdvance,
+        notifyTime: plan.notifyTime,
+        titleTemplate: plan.titleTemplate,
+        bodyTemplate: plan.bodyTemplate,
+        notes: plan.notes
+      }))
     },
     props.model?.id
   )
@@ -1160,6 +1318,65 @@ function formatLogoSource(source: string) {
 .subscription-reminder-preview {
   margin-top: -2px;
   margin-bottom: 18px;
+}
+
+.notification-plans {
+  margin: 4px 0 22px;
+  padding: 16px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 16px;
+  background: var(--app-surface-alt);
+}
+
+.notification-plans__header,
+.notification-plan-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.notification-plans__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--app-text-strong);
+}
+
+.notification-plans__hint,
+.notification-plans__empty,
+.notification-plan-card__variables {
+  margin-top: 4px;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.notification-plans__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.notification-plan-card {
+  padding: 14px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: 14px;
+  background: var(--app-surface);
+}
+
+.notification-plan-card__header {
+  margin-bottom: 8px;
+  color: var(--app-text-strong);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.notification-plan-card__switches {
+  min-height: 64px;
+  padding-top: 22px;
+  color: var(--app-text-secondary);
+  font-size: 12px;
 }
 
 @media (max-width: 900px) {
