@@ -339,18 +339,20 @@
             </n-grid>
 
             <n-form-item :label="t('subscriptions.form.notificationPlanTitleTemplate')">
-              <n-input v-model:value="plan.titleTemplate" :placeholder="t('subscriptions.form.notificationPlanTitlePlaceholder')" />
+              <n-input v-model:value="plan.titleTemplate" :placeholder="`${t('subscriptions.form.notificationPlanTitlePlaceholder')} ${notificationPlanTitleExample}`" />
             </n-form-item>
             <n-form-item :label="t('subscriptions.form.notificationPlanBodyTemplate')">
               <n-input
                 v-model:value="plan.bodyTemplate"
                 type="textarea"
                 :autosize="{ minRows: 3, maxRows: 8 }"
-                :placeholder="t('subscriptions.form.notificationPlanBodyPlaceholder')"
+                :placeholder="`${t('subscriptions.form.notificationPlanBodyPlaceholder')} ${notificationPlanBodyVariables}`"
               />
             </n-form-item>
             <n-input v-model:value="plan.notes" :placeholder="t('subscriptions.form.notificationPlanNotesPlaceholder')" />
-            <div class="notification-plan-card__variables">{{ t('subscriptions.form.notificationPlanVariables') }}</div>
+            <div class="notification-plan-card__variables">
+              {{ t('subscriptions.form.notificationPlanVariables') }} {{ notificationPlanVariables }}
+            </div>
           </div>
         </div>
         <div v-else class="notification-plans__empty">{{ t('subscriptions.form.notificationPlansEmpty') }}</div>
@@ -441,6 +443,9 @@ import type { AiRecognitionResult, LogoSearchResult, NotificationPlan, Subscript
 
 const LOGO_TAB_WEB = 'web'
 const LOGO_TAB_LIBRARY = 'library'
+const notificationPlanTitleExample = '{{plan.name}}: {{subscription.name}}'
+const notificationPlanBodyVariables = '{{subscription.name}}, {{plan.name}}, {{plan.amountWithCurrency}}, {{plan.nextDate}}, {{plan.notes}}'
+const notificationPlanVariables = '{{subscription.name}} {{subscription.amountWithCurrency}} {{plan.name}} {{plan.amountWithCurrency}} {{plan.nextDate}} {{plan.intervalCount}} {{plan.intervalUnit}} {{plan.notes}}'
 
 const props = defineProps<{
   show: boolean
